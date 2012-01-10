@@ -1,0 +1,27 @@
+body {
+  padding: 50px;
+  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+  margin: 0 auto;
+  width: 960px;
+}
+
+a {
+  color: #00B7FF;
+}
+
+div.left{
+  height: 800px;
+  width: 700px;
+  float: left;
+  border: 1px solid #ccc;
+}
+div.right{
+  margin-left: 50px;
+  width: 205px;
+  height: 800px;
+  float: right;
+}
+.clear{
+  clear:both;
+}
+
