@@ -1,14 +1,29 @@
-function log(msg){
-	$("#info").text(msg);
+function roundup(number){
+	var scale = Math.pow(10, 2);
+	return Math.round(number * scale) / scale;
 }
-
-var ACCELERATE_FACTOR = 10;
-function CState(sx, sy){
+function logMessage(msg){
+	$("#info .message").text(msg);
+}
+function logPosition(state, engine){
+	$("#info .ax").text(engine.ax);
+	$("#info .vx").text(state.vx);
+	$("#info .sx").text(state.sx);
+	$("#info .ay").text(engine.ay);
+	$("#info .vy").text(state.vy);
+	$("#info .sy").text(state.sy);
+}
+var CState = function(){
+}
+CState.prototype.init = function(sx, sy){
 	this.t = Date.now();
 	this.sx = sx;
 	this.vx = 0;
 	this.sy = sy;
 	this.vy = 0;
+}
+CState.prototype.description = function(){
+	return "S[" + this.sx + "," + this.sy + "], V["  + this.vx + ","+ this.vy + "] on Time " + this.t;
 }
 
 var CEngine = function(){
@@ -16,38 +31,43 @@ var CEngine = function(){
 	this.ay = 0;
 };
 CEngine.prototype.accelerate = function(ax, ay){
-	this.ax += ax * ACCELERATE_FACTOR;
-	this.ay += ay * ACCELERATE_FACTOR;
+	this.ax += ax;
+	this.ay += ay;
 }
-CEngine.prototype.updatePosition = function(t, state){
-	var originalT = t, originalV = state.v, originalS = state.s;
-	var currentA = (this.ax - 3.0 / 8.0 * originalV * originalV / 5);
-	
+CEngine.prototype.moveTo = function(state){
+	var t = Date.now();
+	var deltaT = t - state.t;
+	var ax = this._getAcceleration(this.ax, state.vx);
 	this.ax = 0;
-	this.t = Date.now();
-	var deltaT = (this.t - originalT)/1000.0;
-	this.vx = this.getV(originalVx, currentAx, deltaT);
-	this.vy = this.getV(originalVy, currentAy, deltaT);
-	this.sx = this.getS(originalSx, originalVx, currentAx, deltaT);
-	this.sy = this.getS(originalSy, originalVy, currentAy, deltaT);
-	log("T: " + this.t + ", s[" + this.sx +", " + this.sy +"], v[" + this.vx + ", " + this.vy + "].");	
-}
-
-CEngine.prototype.getS = function(s0, v0, a, deltaT){
-	return s0 + v0 * deltaT + a * deltaT * deltaT / 2.0;
-}
-
-CEngine.prototype.getV = function(v0, a, deltaT){
-	return v0 + a * deltaT;
-}
-
-var CDrivable = function(sx, sy){
-	this.stateX = new CState(sx, 0);
-	this.stateY = new CState(sy, 0);
-	this.t = Date.now();
-	this.ax = 0;
+	var ay = this._getAcceleration(this.ay, state.vy);
 	this.ay = 0;
-	this.engine = new CEngine(sx, sy);
+	
+	var newState = new CState();
+	newState.t = t;
+	newState.vx = this._getV(state.vx, ax, deltaT);
+	newState.sx = this._getS(state.sx, state.vx, ax, deltaT);
+	newState.vy = this._getV(state.vy, ay, deltaT);
+	newState.sy = this._getS(state.sy, state.vy, ay, deltaT);
+	
+	return newState;
+}
+CEngine.prototype._getAcceleration = function(a, v){
+	var wind = 2 * v;
+	return roundup(a - wind);
+}
+CEngine.prototype._getS = function(s0, v0, a, deltaT){
+	return roundup(s0 + v0 * deltaT + a / 2.0 * deltaT * deltaT / 1000.0);
+}
+CEngine.prototype._getV = function(v0, a, deltaT){
+	return roundup(v0 + a * deltaT / 1000.0);
+}
+
+var CDrivable = function(){
+	this.engine = new CEngine();
+}
+CDrivable.prototype.withState = function(sx, sy){
+	this.state = new CState();
+	this.state.init(sx, sy);
 }
 CDrivable.prototype.left = function(){
 	this.engine.accelerate(-1, 0);
@@ -61,18 +81,22 @@ CDrivable.prototype.up = function(){
 CDrivable.prototype.down = function(){
 	this.engine.accelerate(0, 1);
 }
-CDrivable.prototype.updatePosition = function(){
-	this.engine.updatePosition();
+CDrivable.prototype.move = function(){
+	logPosition(this.state, this.engine);
+	this.state = this.engine.moveTo(this.state);
 }
 
 function CCraft(sx, sy, radius){
+	this.withState(sx, sy);
+	this.radius = radius;
+	// this.shape = new CCirle(radius);
 }
-CCraft.prototype = new CDrivable(sx, sy);
+CCraft.prototype = new CDrivable();
 
 CCraft.prototype.render = function(cxt){
 	cxt.fillStyle = '#CCC';
     cxt.beginPath();
-    cxt.arc(this.engine.sx, this.engine.sy, this.radius, 0, Math.PI * 2);
+    cxt.arc(this.state.sx, this.state.sy, this.radius, 0, Math.PI * 2, true);
     cxt.fill();
     cxt.strokeStyle = "#000000";
     cxt.stroke();
@@ -108,13 +132,29 @@ $G('craft', {
 				break;
 			}
 		},true);
-    },
+		
+		if(!("WebSocket" in window)){  
+		    alert("No web socket is supported!");
+		}else{  
+		    connect();  
+    	}
+	},
     render: function(e) {
         var ctx = e.context;
 		ctx.clearRect(0, 0, this.width(), this.height());
 		this.craft.render(ctx);
     }, 
 	beforerender: function(e){
-		this.craft.updatePosition();
+		this.craft.move();
 	}
 });
+
+function connect(){
+	var socket = new WebSocket("ws://localhost:3000/craft");
+	socket.onopen = function(){  
+   		alert("Socket has been opened!");  
+	}
+	socket.onmessage = function(msg){  
+   		alert("Received: " + msg); //Awesome!  
+	}
+}
