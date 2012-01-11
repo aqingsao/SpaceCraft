@@ -5,6 +5,7 @@
 
 var express = require('express')
 var routes = require('./routes')
+var ws = require('wbsocket-server');
 
 var app = module.exports = express.createServer();
 
@@ -32,4 +33,10 @@ app.configure('production', function(){
 app.get('/', routes.index);
 
 app.listen(3000);
+
+
+var wsServer = ws.createServer();
+wsServer.addListener('connection', function(connection)){
+
+};
 console.log("Express server listening on port %d in %s mode", app.address().port, app.settings.env);
