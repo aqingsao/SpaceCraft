@@ -1,27 +1,29 @@
 function log(msg){
 	$("#info").text(msg);
 }
-var CEngine = function(sx, sy){
-	this.sx = sx;
-	this.sy = sy;
-	this.vx = 0;
-	this.vy = 0;
+
+var ACCELERATE_FACTOR = 10;
+function CState(sx, sy){
 	this.t = Date.now();
+	this.sx = sx;
+	this.vx = 0;
+	this.sy = sy;
+	this.vy = 0;
+}
+
+var CEngine = function(){
 	this.ax = 0;
 	this.ay = 0;
 };
-
 CEngine.prototype.accelerate = function(ax, ay){
-	this.ax += ax;
-	this.ay += ay;
+	this.ax += ax * ACCELERATE_FACTOR;
+	this.ay += ay * ACCELERATE_FACTOR;
 }
-CEngine.prototype.updatePosition = function(){
-	var originalT = this.t, originalVx = this.vx, originalVy = this.vy, originalSx = this.sx, originalSy = this.sy;
-	var currentAx = this.ax, currentAy = this.ay;
+CEngine.prototype.updatePosition = function(t, state){
+	var originalT = t, originalV = state.v, originalS = state.s;
+	var currentA = (this.ax - 3.0 / 8.0 * originalV * originalV / 5);
 	
 	this.ax = 0;
-	this.ay = 0;
-	log("OriginalT: " + originalT + ", s[" + originalSx +", " + originalSy +"], v[" + originalVx + ", " + originalVy + "].");	
 	this.t = Date.now();
 	var deltaT = (this.t - originalT)/1000.0;
 	this.vx = this.getV(originalVx, currentAx, deltaT);
@@ -39,16 +41,34 @@ CEngine.prototype.getV = function(v0, a, deltaT){
 	return v0 + a * deltaT;
 }
 
-var CCraft = function(sx, sy, radius){
+var CDrivable = function(sx, sy){
+	this.stateX = new CState(sx, 0);
+	this.stateY = new CState(sy, 0);
+	this.t = Date.now();
+	this.ax = 0;
+	this.ay = 0;
 	this.engine = new CEngine(sx, sy);
-	this.radius = radius;
 }
-CCraft.prototype.onCommand = function(ax, ay){
-	this.engine.accelerate(ax, ay);
+CDrivable.prototype.left = function(){
+	this.engine.accelerate(-1, 0);
 }
-CCraft.prototype.updatePosition = function(){
+CDrivable.prototype.right = function(){
+	this.engine.accelerate(1, 0);
+}
+CDrivable.prototype.up = function(){
+	this.engine.accelerate(0, -1);
+}
+CDrivable.prototype.down = function(){
+	this.engine.accelerate(0, 1);
+}
+CDrivable.prototype.updatePosition = function(){
 	this.engine.updatePosition();
 }
+
+function CCraft(sx, sy, radius){
+}
+CCraft.prototype = new CDrivable(sx, sy);
+
 CCraft.prototype.render = function(cxt){
 	cxt.fillStyle = '#CCC';
     cxt.beginPath();
@@ -68,23 +88,23 @@ $G('craft', {
 		this.circleMain = new CCircle(central, 100);
 		this.circleLeft = new CCircle(central.off(-200, 0), 50);
 		this.circleRight = new CCircle(central.off(200, 0), 50);
-		this.craft = new CCraft(this.width()/2, this.height()/2, 100);
+		this.craft = new CCraft(this.width()/2, this.height()/2, 20);
 		console.log("Create craft:" + this.craft);
 		
 		var theCraft = this.craft;
 		window.addEventListener('keydown',function(evt){
 			switch (evt.keyCode) {
 				case 38:  
-				 theCraft.onCommand(0, -1);
+				 theCraft.up();
 				break;
 				case 40:  /* Down arrow was pressed */
-				 theCraft.onCommand(0, 1);
+				 theCraft.down();
 				break;
 				case 37:  /* Left arrow was pressed */
-				 theCraft.onCommand(-1, 0);
+				 theCraft.left();
 				break;
 				case 39:  /* Right arrow was pressed */
-				 theCraft.onCommand(1, 0);
+				 theCraft.right();
 				break;
 			}
 		},true);
