@@ -47,36 +47,7 @@ wsServer.addListener('connection', function(connection){
 	});
 });
 
+setInterval(function(){
+	craft.broadcast(wsServer);
+}, 50);
 console.log("Express server listening on port %d in %s mode", app.address().port, app.settings.env);
-
-function onConnectionMessage(connection, msg){
-	switch(msg){
-		case 'UP':
-			craft.y--;
-			updateCraft(craft);
-			break;
-		case 'DOWN':
-			craft.y++;
-			updateCraft(craft);
-			break;
-		case 'LEFT':
-			craft.x--;
-			updateCraft(craft);
-			break;
-		case 'RIGHT':
-			craft.x++;
-			updateCraft(craft);
-			break;
-	}
-}
-
-function updateCraft(craft, connection){
-	console.log("Craft moved to [" + craft.x + ", " + craft.y + "]");
-	var msg = JSON.stringify(craft);
-	if(connection){
-		wsServer.send(connection.id, msg);
-	}
-	else{
-		wsServer.broadcast(msg);
-	}
-}
