@@ -5,6 +5,7 @@
 
 var express = require('express')
 var routes = require('./routes')
+var craft = require('./routes/craft.js')
 var ws = require('websocket-server');
 
 var app = module.exports = express.createServer();
@@ -34,12 +35,11 @@ app.get('/', routes.index);
 
 app.listen(3000);
 
-var craft = {x: 350, y: 350};
 var wsServer = ws.createServer({server:app, debug:true});
 wsServer.addListener('connection', function(connection){
-	updateCraft(craft, connection);
+	craft.onSocketConnected(wsServer, connection);
 	connection.addListener('message', function(msg){
-		onConnectionMessage(connection, msg);
+		craft.onSocketMessage(wsServer, connection, msg);
 	});
 	connection.addListener('rejected', function(msg){
 	});

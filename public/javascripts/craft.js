@@ -130,7 +130,7 @@ $G('craft', {
 });
 
 function connect(){
-    var socket = new WebSocket("ws://10.18.3.30:3000");
+    var socket = new WebSocket("ws://localhost:3000");
 	socket.onopen = function(){  
 		_CRAFT.socket = socket;
         $("#info span.status").text("Connected with server");
@@ -159,7 +159,6 @@ function connect(){
 
 function onKeyDown(evt){
 	if(_CRAFT.socket == null){
-		alert("You are disconnected from server.");
 		return;
 	}
 		switch (evt.keyCode) {
