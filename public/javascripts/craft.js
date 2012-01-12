@@ -5,6 +5,8 @@ function roundup(number){
 function logMessage(msg){
 	$("#info .message").text(msg);
 }
+var	_CRAFT = {};
+
 function logPosition(state, engine){
 	$("#info .ax").text(engine.ax);
 	$("#info .vx").text(state.vx);
@@ -81,9 +83,9 @@ CDrivable.prototype.up = function(){
 CDrivable.prototype.down = function(){
 	this.engine.accelerate(0, 1);
 }
-CDrivable.prototype.move = function(){
-	logPosition(this.state, this.engine);
-	this.state = this.engine.moveTo(this.state);
+CDrivable.prototype.moveTo = function(x, y){
+	this.state.sx = x;
+	this.state.sy = y;
 }
 
 function CCraft(sx, sy, radius){
@@ -108,53 +110,70 @@ $G('craft', {
     height: 800
 }, {
     start: function() {
-		var central = new CPoint(this.width()/2, this.height()/2);
-		this.circleMain = new CCircle(central, 100);
-		this.circleLeft = new CCircle(central.off(-200, 0), 50);
-		this.circleRight = new CCircle(central.off(200, 0), 50);
-		this.craft = new CCraft(this.width()/2, this.height()/2, 20);
-		console.log("Create craft:" + this.craft);
-		
-		var theCraft = this.craft;
-		window.addEventListener('keydown',function(evt){
-			switch (evt.keyCode) {
-				case 38:  
-				 theCraft.up();
-				break;
-				case 40:  /* Down arrow was pressed */
-				 theCraft.down();
-				break;
-				case 37:  /* Left arrow was pressed */
-				 theCraft.left();
-				break;
-				case 39:  /* Right arrow was pressed */
-				 theCraft.right();
-				break;
-			}
-		},true);
-		
 		if(!("WebSocket" in window)){  
 		    alert("No web socket is supported!");
 		}else{  
 		    connect();  
     	}
+		
+		window.addEventListener('keydown', onKeyDown, true);
 	},
     render: function(e) {
-        var ctx = e.context;
-		ctx.clearRect(0, 0, this.width(), this.height());
-		this.craft.render(ctx);
+		if(_CRAFT.craft != null){
+        	var ctx = e.context;
+			ctx.clearRect(0, 0, this.width(), this.height());
+			_CRAFT.craft.render(ctx);
+		}
     }, 
 	beforerender: function(e){
-		this.craft.move();
 	}
 });
 
 function connect(){
-	var socket = new WebSocket("ws://localhost:3000/craft");
+    var socket = new WebSocket("ws://10.18.3.30:3000");
 	socket.onopen = function(){  
-   		alert("Socket has been opened!");  
+		_CRAFT.socket = socket;
+        $("#info span.status").text("Connected with server");
 	}
 	socket.onmessage = function(msg){  
-   		alert("Received: " + msg); //Awesome!  
+        $("#info span.status").text("Received msg: " + msg.data);
+
+		var command = JSON.parse(msg.data);
+		if(_CRAFT.craft == null){
+			console.log("Initialize a craft on [" + command.x + ", " + command.y + "]");
+			_CRAFT.craft = new CCraft(command.x, command.y, 20);
+		}
+		else{
+			_CRAFT.craft.moveTo(command.x, command.y);
+		}
 	}
+	socket.onclose = function(){
+		_CRAFT.socket = null;
+		$("#info span.status").text("Socket closed.");
+	}
+	socket.onerror = function(){
+        $("#info span.status").text("Socket error");
+	}
+	return socket;
+}
+
+function onKeyDown(evt){
+	if(_CRAFT.socket == null){
+		alert("You are disconnected from server.");
+		return;
+	}
+		switch (evt.keyCode) {
+			case 38:  
+			 _CRAFT.socket.send('UP');
+			break;
+			case 40:  /* Down arrow was pressed */
+			 _CRAFT.socket.send('DOWN');
+			break;
+			case 37:  /* Left arrow was pressed */
+			 _CRAFT.socket.send('LEFT');
+			break;
+			case 39:  /* Right arrow was pressed */
+			 _CRAFT.socket.send('RIGHT');
+			break;
+		}
 }
