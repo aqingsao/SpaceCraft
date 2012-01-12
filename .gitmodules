@@ -1,3 +1,3 @@
-[submodule "websocket-server"]
-	path = websocket-server
+[submodule "node_modules/websocket-server"]
+	path = node_modules/websocket-server
 	url = git://github.com/miksago/node-websocket-server.git
